@@ -1,0 +1,51 @@
+{
+  "name": "@patimweb/pi-outline-wiki",
+  "version": "1.0.0",
+  "description": "Outline wiki extension for the pi coding agent. Search, read, write, organise and comment on Outline documents from your pi session.",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "outline",
+    "wiki",
+    "knowledge-base",
+    "documentation"
+  ],
+  "author": "Patrick Weppelmann",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Smotherer007/pi-outline-wiki.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Smotherer007/pi-outline-wiki/issues"
+  },
+  "scripts": {
+    "build": "echo 'No build step defined'",
+    "test": "node --experimental-test-module-mocks --experimental-test-coverage --test 'tests/**/*.test.ts'",
+    "test:watch": "node --experimental-test-module-mocks --test --watch 'tests/**/*.test.ts'",
+    "test:coverage": "node --experimental-test-module-mocks --experimental-test-coverage --test 'tests/**/*.test.ts'"
+  },
+  "dependencies": {
+    "typebox": "^1.2.8"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@semantic-release/git": "^10.0.0",
+    "semantic-release": "^25.0.0"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "image": "https://raw.githubusercontent.com/Smotherer007/pi-outline-wiki/main/screenshot.png"
+  }
+}
