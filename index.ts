@@ -91,7 +91,12 @@ export default function (pi: ExtensionAPI) {
       }
 
       pi.sendUserMessage(
-        `Search our Outline wiki for "${query}" using outline_search, read the most relevant document(s) with outline_read, and summarise what the wiki says. Cite each document by title and id, and say so plainly if the wiki has nothing on it.`,
+        [
+          `Search our Outline wiki for "${query}".`,
+          "If outline_profile shows more than one workspace, pick the one whose description fits, or search them all with outline_search allProfiles: true.",
+          "Then read the most relevant document(s) with outline_read, passing the same profile the hit came from, and summarise what the wiki says.",
+          "Cite each document by title and id (and workspace, if several are in play). Say so plainly if the wiki has nothing on it.",
+        ].join(" "),
         { deliverAs: "steer" },
       );
       ctx.ui.notify(`Searching the wiki for "${query}"...`, "info");
@@ -112,11 +117,12 @@ export default function (pi: ExtensionAPI) {
         [
           "Capture the durable knowledge from this session in our Outline wiki.",
           hint ? `Focus on: ${hint}.` : "",
-          "First use outline_search to check whether a page on this already exists.",
+          "If outline_profile shows more than one workspace, decide which one this belongs in first and pass profile explicitly on every call; ask me if it is not obvious.",
+          "Then use outline_search to check whether a page on this already exists.",
           "If it does, extend it with outline_update (mode append) instead of creating a duplicate.",
           "If it does not, use outline_collections to pick the right collection and create the page with outline_create.",
           "Write what a colleague would need in six months: the decision, why, and what was ruled out -- not a transcript.",
-          "Show me the page title and URL when you are done.",
+          "Show me the workspace, page title and URL when you are done.",
         ]
           .filter(Boolean)
           .join(" "),

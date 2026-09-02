@@ -1,7 +1,7 @@
 ---
 name: outline-doc-writing
-description: Write and edit documents in the Outline wiki so they are findable, correct and safe to change. Use whenever creating a new wiki page, updating an existing one, restructuring a collection, or when the user asks to "document this in the wiki", "write it up in Outline", "update the runbook" or "add a page". Covers where a page belongs, how to structure it, how to update without destroying other people's work, and when to comment instead of edit.
-allowed-tools: outline_collections, outline_structure, outline_search, outline_list, outline_read, outline_create, outline_update, outline_move, outline_archive, outline_comment
+description: Write and edit documents in the Outline wiki so they are findable, correct and safe to change. Use whenever creating a new wiki page, updating an existing one, restructuring a collection, or when the user asks to "document this in the wiki", "write it up in Outline", "update the runbook" or "add a page". Covers which workspace and collection a page belongs in, how to structure it, how to update without destroying other people's work, and when to comment instead of edit.
+allowed-tools: outline_profile, outline_collections, outline_structure, outline_search, outline_list, outline_read, outline_create, outline_update, outline_move, outline_archive, outline_comment
 ---
 
 # Writing in the Outline wiki
@@ -9,10 +9,28 @@ allowed-tools: outline_collections, outline_structure, outline_search, outline_l
 A wiki page you write is read by people who were not in this session. Write
 for them.
 
+## Which workspace
+
+Writing into the wrong wiki is worse than reading the wrong one: it is
+visible to the wrong people and it is not obvious to anyone that it happened.
+So when more than one workspace is configured, settle this **before** the
+first write.
+
+1. `outline_profile` lists every workspace with what it holds, and marks the
+   active one.
+2. Pass `profile: <name>` explicitly on every write call. Do not rely on
+   whichever workspace happens to be active - that is a setting from an
+   earlier session.
+3. If it is not obvious which workspace the content belongs to, **ask the
+   user**. Client material in an internal wiki, or one client's material in
+   another client's wiki, is a confidentiality problem, not a filing mistake.
+4. Say which workspace you wrote to when you report back.
+
 ## Before you create anything
 
-1. `outline_search` for the topic. **Extending an existing page is almost
-   always better than adding a second one.** Duplicates are how wikis die.
+1. `outline_search` for the topic - in the workspace you settled on. **Extending
+   an existing page is almost always better than adding a second one.**
+   Duplicates are how wikis die.
 2. If nothing exists, `outline_collections` then `outline_structure` on the
    likely collection, so the new page lands where people will look for it.
 3. If the right home is ambiguous, ask the user which collection rather than
@@ -74,5 +92,6 @@ the content is fine but the location is wrong.
 
 ## Finish the job
 
-After writing, tell the user the page title, its id and its URL, and say in
-one line what you put there. If you created a draft, say that too.
+After writing, tell the user the workspace, the page title, its id and its
+URL, and say in one line what you put there. If you created a draft, say that
+too.

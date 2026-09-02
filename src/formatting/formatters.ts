@@ -59,17 +59,97 @@ export function formatProfileStatus(
     return "No Outline workspace configured. Use outline_setup with your workspace URL and an API key from Settings -> API & Apps.";
   }
 
-  const lines = names.map((name) => {
+  const lines: string[] = [];
+  for (const name of names) {
     const config = profiles[name];
     const marker = name === active ? "*" : " ";
     const insecure = config.insecureTls ? " (TLS validation off)" : "";
-    return `${marker} ${name}: ${config.url} key ${maskApiKey(config.apiKey)}${insecure}`;
-  });
+    lines.push(
+      `${marker} ${name}: ${config.url} key ${maskApiKey(config.apiKey)}${insecure}`,
+    );
+    // The description is what tells the agent which wiki holds what, so it
+    // gets its own line rather than being truncated onto the end of the URL.
+    if (config.description) lines.push(`    ${config.description}`);
+  }
+
+  const footer =
+    names.length > 1
+      ? [
+          "",
+          "Target one workspace with the profile parameter, or set allProfiles: true on outline_search to search all of them at once.",
+        ]
+      : [];
 
   return [
-    `Outline profiles (${names.length}), * marks the active one:`,
+    `Outline workspaces (${names.length}), * marks the active one:`,
     ...lines,
+    ...footer,
   ].join("\n");
+}
+
+/** Search results gathered from several workspaces in one call. */
+export interface ProfileSearchResult {
+  readonly profile: string;
+  readonly description?: string;
+  readonly hits: ReadonlyArray<SearchHit>;
+  readonly error?: string;
+}
+
+export function formatMultiSearchResults(
+  results: ReadonlyArray<ProfileSearchResult>,
+  query: string,
+): string {
+  const withHits = results.filter((result) => result.hits.length > 0);
+  const failed = results.filter((result) => result.error);
+  const total = withHits.reduce((sum, result) => sum + result.hits.length, 0);
+
+  const sections: string[] = [];
+
+  if (total === 0) {
+    sections.push(
+      `No documents match "${query}" in any of the ${results.length} configured workspace(s).`,
+    );
+  } else {
+    sections.push(
+      `Search "${query}" across ${results.length} workspace(s) -- ${total} result(s).`,
+      "Ids are only valid within their own workspace: pass that workspace as the profile parameter to outline_read.",
+    );
+  }
+
+  for (const result of withHits) {
+    const label = result.description
+      ? `${result.profile} (${result.description})`
+      : result.profile;
+    const lines = result.hits.map((hit, index) => {
+      const context = hit.context.replace(/\s+/g, " ").trim();
+      return [
+        `  ${index + 1}. ${hit.document.title}${statusMarkers(hit.document)}`,
+        `     id ${hit.document.id} | profile ${result.profile} | updated ${shortDate(hit.document.updatedAt)}`,
+        context ? `     ${context.slice(0, 300)}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    });
+    sections.push(`\n[${label}] ${result.hits.length} result(s):\n${lines.join("\n")}`);
+  }
+
+  const empty = results.filter(
+    (result) => !result.error && result.hits.length === 0,
+  );
+  if (empty.length > 0 && total > 0) {
+    sections.push(
+      `\nNo matches in: ${empty.map((result) => result.profile).join(", ")}.`,
+    );
+  }
+
+  if (failed.length > 0) {
+    sections.push(
+      `\n${failed.length} workspace(s) could not be searched:`,
+      ...failed.map((result) => `- ${result.profile}: ${result.error}`),
+    );
+  }
+
+  return sections.join("\n");
 }
 
 export function formatWorkspaceInfo(info: WorkspaceInfo): string {

@@ -512,7 +512,7 @@ describe("outline_status", () => {
     const result = await OutlineStatusTool.execute("1", { profile: "test" }, signal);
     assert.strictEqual(result.details.configured, true);
     assert.strictEqual(result.details.reachable, true);
-    assert.match(result.content[0].text, /Outline profiles/);
+    assert.match(result.content[0].text, /Outline workspaces/);
   });
 
   it("does not throw when the workspace is unreachable", async () => {
@@ -563,5 +563,126 @@ describe("outline_comments", () => {
     const result = await OutlineCommentsTool.execute("1", { documentId: "doc-1" }, signal);
     assert.strictEqual(result.details.count, 2);
     assert.strictEqual(result.details.unresolved, 1);
+  });
+});
+
+// Appended last: adds further profiles, so it must run after the tests that
+// assert on the exact profile list.
+describe("outline_search across all workspaces", () => {
+  /** Answer per workspace host, so a fan-out can be told apart. */
+  function stubPerWorkspace(byHost: Record<string, unknown>) {
+    calls = [];
+    globalThis.fetch = (async (url: any, init: any) => {
+      const href = String(url);
+      const host = new URL(href).host;
+      calls.push({ method: href.split("/api/")[1], body: JSON.parse(init.body) });
+      const payload = byHost[host];
+      if (payload === undefined) {
+        return {
+          ok: false,
+          status: 500,
+          text: async () => JSON.stringify({ ok: false, message: "workspace down" }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ ok: true, data: payload }),
+      } as unknown as Response;
+    }) as typeof fetch;
+  }
+
+  before(() => {
+    saveProfile("kunde-a", {
+      url: "https://wiki.kunde-a.de",
+      apiKey: "ol_api_a",
+      description: "ACME client project docs",
+    });
+    saveProfile("kunde-b", { url: "https://wiki.kunde-b.de", apiKey: "ol_api_b" });
+  });
+
+  it("rejects combining profile with allProfiles", async () => {
+    await assert.rejects(
+      () =>
+        OutlineSearchTool.execute(
+          "1",
+          { query: "x", profile: "test", allProfiles: true },
+          signal,
+        ),
+      /contradict each other/,
+    );
+  });
+
+  it("rejects workspace-specific id filters in a fan-out", async () => {
+    await assert.rejects(
+      () =>
+        OutlineSearchTool.execute(
+          "1",
+          { query: "x", allProfiles: true, collectionId: "col-1" },
+          signal,
+        ),
+      /specific to one workspace/,
+    );
+  });
+
+  it("searches every workspace and labels each hit with its profile", async () => {
+    stubPerWorkspace({
+      "acme.getoutline.com": [
+        { context: "internal", document: { ...docPayload, id: "int-1", title: "Deploy intern" } },
+      ],
+      "wiki.kunde-a.de": [
+        { context: "client", document: { ...docPayload, id: "cli-1", title: "Deploy Kunde A" } },
+      ],
+      "wiki.kunde-b.de": [],
+    });
+
+    const result = await OutlineSearchTool.execute("1", { query: "deploy", allProfiles: true }, signal);
+
+    // Assert on which workspace produced which hit rather than a total, so the
+    // test does not depend on how many profiles earlier tests left behind.
+    const found = result.details.documents;
+    assert.ok(
+      found.some((d: any) => d.profile === "test" && d.title === "Deploy intern"),
+    );
+    assert.ok(
+      found.some((d: any) => d.profile === "kunde-a" && d.title === "Deploy Kunde A"),
+    );
+    assert.ok(!found.some((d: any) => d.profile === "kunde-b"));
+    for (const name of ["test", "kunde-a", "kunde-b"]) {
+      assert.ok(
+        result.details.searchedProfiles.includes(name),
+        `${name} was not searched`,
+      );
+    }
+    assert.match(result.content[0].text, /kunde-a \(ACME client project docs\)/);
+    assert.match(result.content[0].text, /profile kunde-a/);
+    assert.match(result.content[0].text, /Ids are only valid within their own workspace/);
+  });
+
+  it("reports a failing workspace without losing the other results", async () => {
+    stubPerWorkspace({
+      "acme.getoutline.com": [
+        { context: "found", document: { ...docPayload, id: "d1", title: "Hit" } },
+      ],
+      // wiki.kunde-a.de and wiki.kunde-b.de answer 500
+    });
+
+    const result = await OutlineSearchTool.execute("1", { query: "deploy", allProfiles: true }, signal);
+
+    assert.strictEqual(result.details.count > 0, true);
+    assert.ok(result.details.failedProfiles.includes("kunde-a"));
+    assert.match(result.content[0].text, /could not be searched/);
+    assert.match(result.content[0].text, /workspace down/);
+  });
+
+  it("says so when nothing matches anywhere", async () => {
+    stubPerWorkspace({
+      "acme.getoutline.com": [],
+      "wiki.kunde-a.de": [],
+      "wiki.kunde-b.de": [],
+    });
+    const result = await OutlineSearchTool.execute("1", { query: "unicorn", allProfiles: true }, signal);
+    assert.strictEqual(result.details.count, 0);
+    assert.match(result.content[0].text, /No documents match "unicorn" in any/);
   });
 });

@@ -1,7 +1,7 @@
 ---
 name: outline-knowledge-capture
 description: Turn what was worked out in a coding session into a durable Outline wiki page - architecture decisions, debugging findings, incident write-ups, setup and runbook steps, or gotchas that cost real time. Use when the user says "write this up", "document this decision", "capture this in the wiki", "add this to our docs", "so we don't hit this again", or after any session that produced knowledge which is not obvious from the code alone.
-allowed-tools: outline_collections, outline_structure, outline_search, outline_read, outline_create, outline_update, outline_comment
+allowed-tools: outline_profile, outline_collections, outline_structure, outline_search, outline_read, outline_create, outline_update, outline_comment
 ---
 
 # Capturing session knowledge in Outline
@@ -26,14 +26,20 @@ what you tried, or anything you would have to invent details for.
 
 ## Procedure
 
-1. **Check for an existing home.** `outline_search` with the system or
+1. **Pick the workspace.** If `outline_profile` shows more than one, decide
+   which wiki this belongs in before writing anything, and pass `profile`
+   explicitly on every call. Work done for a client belongs in that client's
+   workspace - never in the internal wiki or another client's, even when the
+   technical finding is general. If the session touched more than one context
+   and you cannot tell, ask.
+2. **Check for an existing home.** `outline_search` with the system or
    component name. A decision about the payments service belongs on or under
    the payments page, not in a new orphan document.
-2. **Extend before you create.** If a relevant page exists, `outline_read` it
+3. **Extend before you create.** If a relevant page exists, `outline_read` it
    and add a dated section with `outline_update` `mode: append`.
-3. **Otherwise create.** `outline_collections` -> `outline_structure` ->
+4. **Otherwise create.** `outline_collections` -> `outline_structure` ->
    `outline_create` under the right parent.
-4. **Report back** with the title, id and URL.
+5. **Report back** with the workspace, title, id and URL.
 
 ## What to write
 
@@ -48,7 +54,9 @@ Answer the four questions a future colleague will actually have:
   true.
 
 Include the concrete artefacts: the exact error message, the command that
-reproduces it, the file paths, the ticket or PR link. A page that says "we
+reproduces it, the file paths, the ticket or PR link. Leave out credentials,
+tokens and customer data - a wiki page is readable by everyone in that
+workspace. A page that says "we
 fixed a timeout issue" helps nobody.
 
 ## Templates

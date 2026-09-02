@@ -29,6 +29,12 @@ export const OutlineSetupTool = {
     apiKey: Type.String({
       description: "Outline API key from Settings -> API & Apps (starts with ol_api_).",
     }),
+    description: Type.Optional(
+      Type.String({
+        description:
+          "One line on what this wiki contains, e.g. 'internal engineering wiki' or 'ACME client project docs'. Strongly recommended when several workspaces are configured: it is how the agent decides which wiki to search.",
+      }),
+    ),
     insecureTls: Type.Optional(
       Type.Boolean({
         description:
@@ -41,6 +47,7 @@ export const OutlineSetupTool = {
     const config: OutlineConfig = {
       url: normalizeBaseUrl(params.url),
       apiKey: params.apiKey.trim(),
+      ...(params.description && { description: params.description.trim() }),
       ...(params.insecureTls !== undefined && { insecureTls: params.insecureTls }),
     };
 

@@ -16,6 +16,12 @@ export interface OutlineConfig {
   /** Personal API key, starts with `ol_api_`. */
   readonly apiKey: string;
   /**
+   * What this wiki is for, in one line ("internal engineering wiki",
+   * "client ACME project docs"). With several workspaces configured this is
+   * what lets the agent pick the right one instead of guessing from a name.
+   */
+  readonly description?: string;
+  /**
    * Skip TLS certificate validation. Only for self-hosted instances behind a
    * self-signed certificate. Disables validation process-wide, so it is off
    * unless explicitly requested.
@@ -126,6 +132,7 @@ export interface SetupParams {
   readonly name: string;
   readonly url: string;
   readonly apiKey: string;
+  readonly description?: string;
   readonly insecureTls?: boolean;
 }
 

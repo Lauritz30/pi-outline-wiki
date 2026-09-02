@@ -29,6 +29,7 @@ outline_setup:
   name: work
   url: https://acme.getoutline.com
   apiKey: ol_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  description: internal engineering wiki
 ```
 
 `outline_setup` verifies the connection immediately and reports the workspace and the authenticated user, so a typo in the URL or key surfaces right away.
@@ -41,10 +42,10 @@ The `url` is forgiving: a bare host, a trailing slash, a pasted `/api` base or t
 |------|-------------|
 | `outline_setup` | Configure workspace URL and API key. Must be called first. |
 | `outline_status` | Show configured profiles and verify the active key still works. |
-| `outline_profile` | List, switch, or delete workspace profiles (multi-workspace support). |
+| `outline_profile` | List, switch, or delete workspace profiles, with what each wiki holds. |
 | `outline_collections` | List collections with their ids. |
 | `outline_structure` | Show the nested document tree of one collection. |
-| `outline_search` | Full-text search with optional collection, status and date filters. |
+| `outline_search` | Full-text search with optional collection, status and date filters; can search all workspaces at once. |
 | `outline_list` | Browse documents: recent, by collection, by parent, or your drafts. |
 | `outline_read` | Read a document's markdown body, optionally with children or saved to a file. |
 | `outline_create` | Create a document in a collection or under a parent document. |
@@ -69,6 +70,16 @@ outline_search:
 ```
 
 Archived documents are excluded unless you ask for them via `statusFilter`.
+
+With several workspaces configured, `allProfiles: true` searches every one of them and labels each hit with the workspace it came from:
+
+```yaml
+outline_search:
+  query: postgres failover
+  allProfiles: true
+```
+
+`allProfiles` cannot be combined with `profile`, `collectionId` or `documentId` -- those are specific to a single workspace, and the tool rejects the combination rather than silently returning nothing.
 
 ### Reading
 
@@ -174,7 +185,34 @@ Credentials are persisted to `~/.pi/outline-config.json`, written atomically wit
 
 ### Multiple workspaces
 
-Every workspace is stored under a profile name. The first profile becomes active automatically; use `outline_profile` to list, switch, or delete profiles. Every read and write tool also accepts a one-off `profile` parameter.
+Several Outline wikis can be configured side by side -- call `outline_setup` once per wiki with a different `name`. The first profile becomes active automatically; later ones do not steal the active slot.
+
+```yaml
+outline_setup:
+  name: firma
+  url: https://acme.getoutline.com
+  apiKey: ol_api_xxx
+  description: internal engineering wiki
+
+outline_setup:
+  name: kunde-a
+  url: https://wiki.kunde-a.de
+  apiKey: ol_api_yyy
+  description: ACME client project docs
+```
+
+**Give every workspace a `description`.** It is shown by `outline_profile` and `outline_status`, and it is what lets the agent decide which wiki to search instead of guessing from a profile name. The bundled skills instruct the agent to check that list before searching, and to ask you rather than guess when a *write* could land in the wrong wiki.
+
+| Need | How |
+|------|-----|
+| See what is configured | `outline_profile` |
+| Switch the default | `outline_profile: { action: use, name: kunde-a }` |
+| One call against another wiki | any tool + `profile: kunde-a` |
+| Search everything at once | `outline_search` + `allProfiles: true` |
+
+Document ids are scoped to their workspace. A hit that a fan-out search reports as `profile kunde-a` must be read with `outline_read` and `profile: kunde-a` -- the same id means nothing in another wiki.
+
+If one workspace is unreachable or its key has expired, a fan-out search still returns the results from the others and reports the failure separately.
 
 ### Self-hosted instances
 

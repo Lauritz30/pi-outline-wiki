@@ -8,6 +8,7 @@ import {
   formatDocument,
   formatDocumentList,
   formatDocumentSaved,
+  formatMultiSearchResults,
   formatProfileStatus,
   formatSearchResults,
   formatWorkspaceInfo,
@@ -244,5 +245,93 @@ describe("formatComments", () => {
       "doc-1",
     );
     assert.match(text, /\[resolved\]/);
+  });
+});
+
+describe("formatProfileStatus with several workspaces", () => {
+  it("shows each workspace description on its own line", () => {
+    const text = formatProfileStatus(
+      {
+        firma: {
+          url: "https://acme.getoutline.com",
+          apiKey: "ol_api_a",
+          description: "internal engineering wiki",
+        },
+        kunde: { url: "https://wiki.kunde.de", apiKey: "ol_api_b" },
+      },
+      "firma",
+    );
+    assert.match(text, /^ {4}internal engineering wiki$/m);
+  });
+
+  it("mentions the fan-out option once more than one is configured", () => {
+    const many = formatProfileStatus(
+      {
+        a: { url: "https://a.example.com", apiKey: "k1" },
+        b: { url: "https://b.example.com", apiKey: "k2" },
+      },
+      "a",
+    );
+    assert.match(many, /allProfiles: true/);
+
+    const one = formatProfileStatus({ a: { url: "https://a.example.com", apiKey: "k1" } }, "a");
+    assert.ok(!one.includes("allProfiles"));
+  });
+});
+
+describe("formatMultiSearchResults", () => {
+  const hit = (id: string, title: string) => ({
+    ranking: 1,
+    context: "snippet here",
+    document: { ...doc, id, title },
+  });
+
+  it("groups hits by workspace and warns that ids are workspace-scoped", () => {
+    const text = formatMultiSearchResults(
+      [
+        { profile: "firma", description: "internal wiki", hits: [hit("d1", "Deploy")] },
+        { profile: "kunde", hits: [hit("d2", "Rollout")] },
+      ],
+      "deploy",
+    );
+    assert.match(text, /\[firma \(internal wiki\)\] 1 result/);
+    assert.match(text, /\[kunde\] 1 result/);
+    assert.match(text, /profile kunde/);
+    assert.match(text, /Ids are only valid within their own workspace/);
+  });
+
+  it("names the workspaces that had no match", () => {
+    const text = formatMultiSearchResults(
+      [
+        { profile: "firma", hits: [hit("d1", "Deploy")] },
+        { profile: "kunde", hits: [] },
+      ],
+      "deploy",
+    );
+    assert.match(text, /No matches in: kunde\./);
+  });
+
+  it("reports failures separately from empty results", () => {
+    const text = formatMultiSearchResults(
+      [
+        { profile: "firma", hits: [hit("d1", "Deploy")] },
+        { profile: "kunde", hits: [], error: "401 key rejected" },
+      ],
+      "deploy",
+    );
+    assert.match(text, /1 workspace\(s\) could not be searched/);
+    assert.match(text, /kunde: 401 key rejected/);
+    assert.ok(!/No matches in/.test(text));
+  });
+
+  it("states plainly when nothing matched anywhere", () => {
+    const text = formatMultiSearchResults(
+      [
+        { profile: "firma", hits: [] },
+        { profile: "kunde", hits: [] },
+      ],
+      "unicorn",
+    );
+    assert.match(text, /No documents match "unicorn" in any of the 2 configured workspace/);
   });
 });
